@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Advanced Chat</title>
+    <meta charset="utf-8"  />
+    
+    <style>
+       
+        h1 {
+            text-align: center;
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            background-color: lightblue;
+            padding:30px;
+
+         }
+
+         li {
+             font-family: fantasy ;
+             background-color: lavender;
+             padding: 10px
+         }
+
+         h3 {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            background-color: rgb(240, 207, 212);
+            padding: 5px;
+         }
+
+         input [type = "text" ]{
+            font-family: fantasy ;
+         }
+
+         button {
+             background-color: white;
+         }
+
+         .txt {
+            font-family: fantasy ;
+            text-align: center;
+         }
+    </style>
+</head>
+
+<body>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.2.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.3/firebase-firestore.js"></script>
+
+    <h1>Advanced Chat</h1>
+    <ul>
+        <li>Type any text to send a message, or</li>
+        <li>Type /giphy into the message box to send a random gif (e.g. /giphy cat)</li>
+    </ul>
+    <label> <strong> Username:</strong></label>
+    <input type="text" id="username" placeholder="Noeliah">
+    
+    <label> <strong> Message: </strong></label>
+    <input type="text" id="message" placeholder="Hi :) ">
+    
+    <button id="send">Send</button>
+    
+    <h3>Chat Messages:</h3>
+
+    <div id="messagesContainer">
+        <!-- We will display any messages here that we send/retrieve from Firestore -->
+    </div>
+
+     <script>
+
+        // ---------------------------------------
+        // Initialize Firebase and Firestore
+        // ---------------------------------------
+
+        // Replace with your web app's Firebase configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyBJ30DVu_grXcGmGDlXtmXTMtUvyjc18lg",
+            authDomain: "intro-to-webdev-proj.firebaseapp.com",
+            projectId: "intro-to-webdev-proj",
+            storageBucket: "intro-to-webdev-proj.appspot.com",
+            messagingSenderId: "790606764198",
+            appId: "1:790606764198:web:b2a31d010ec8ab5ead7c67"
+        };
+
+        // Initialize our application
+        firebase.initializeApp(firebaseConfig);
+        var firestore = firebase.firestore();
+        var collectionRef = firestore.collection('messages')
+
+        // Inputs
+        var inputUsername = document.getElementById("username")
+        var inputMessage = document.getElementById("message")
+        var sendButton = document.getElementById("send")
+
+        // Output DIV
+        var messagesContainer = document.getElementById("messagesContainer")
+
+        // Giphy API
+        var apiKey = 'HXKNHt1i1gYbHKVb3bJfeYVBVLRlSqhI'
+        var base_url = 'https://api.giphy.com/v1/gifs/random?api_key=' + apiKey + '&rating=g&lang=en&tag='
+
+
+        // FLAG FIELD
+        var saveMessageToFirestore = (username, textToSave, bGiphyURL) => {
+        collectionRef.add({
+            username: username,
+            txt: textToSave,
+            timestamp: Date.now(),
+            bGiphyURL: bGiphyURL //THIS NEW FIELD TELLS US IF WE ARE SAVING A URL OR A TXT MESSAGE
+        }).then(() => {
+            console.log("Message Saved!");
+        }).catch((error) => {
+            console.log("Got and error:", error);
+        });
+        }
+
+        // Add an event listener to our button that adds a new message to our firestore collection
+        sendButton.addEventListener("click", () => {                
+            
+            txt = inputMessage.value
+            // If the messages contains the '/giphy' only send the URL to the gif!
+            if(txt.indexOf('/giphy') == 0) {
+                console.log("String starts with the giphy command" + txt.indexOf('/giphy'))
+                
+                txt = txt.substring(7); // '/giphy ' is 7 characters long
+
+                url = base_url + encodeURI(txt)
+            
+                // User the JavaScript fetch API
+                fetch(url)
+                .then(response => response.json())
+                .then(myJson => {
+                    saveMessageToFirestore(inputUsername.value, myJson.data.image_url, true)
+                })
+                
+            } else {
+                saveMessageToFirestore(inputUsername.value, inputMessage.value, false)
+            }
+        })
+            // TODO: Respond to the send button being pressed
+
+        // Define a function to listen for real-time updates
+        var getRealTimeUpdates = () => {
+            
+            // All documents in our collection, messages, ordered from oldest to newest
+            var collectionQuery = firestore.collection('messages').orderBy('timestamp', 'asc')
+
+            collectionQuery.onSnapshot((snapshot) => {                
+                // Each snapshot contains one or more DocumentChange objects
+                // Loop through each document change
+                snapshot.docChanges().forEach((docChange) => {
+                     // Log the document change we detected
+                     console.log(docChange)
+
+                      // get the data for this document
+                    var data = docChange.doc.data()
+
+            if(data.bGiphyURL) {
+                        // Create a div with this username and message IMAGE the content.
+                        
+                        var div = document.createElement("DIV");   // Create a new <div> element
+                        div.innerHTML = data.username + ": "; // Insert text for our username and message
+
+                        var img = document.createElement("IMG");
+                        img.src = data.txt
+                        div.appendChild(img)
+                        messagesContainer.appendChild(div); 
+                    } else {
+                        
+
+        // Create a new div with this username and message as the content.
+        var div = document.createElement("DIV");   // Create a new <div> element
+        div.innerHTML = data.username + ": " + data.txt; // Insert text for our username and message
+        messagesContainer.appendChild(div); 
+                    }
+        });
+        });
+        }
+
+        // Call our function to start listening for real-time updates
+        getRealTimeUpdates();
+
+        </script>
+        </body>
+        </html>
